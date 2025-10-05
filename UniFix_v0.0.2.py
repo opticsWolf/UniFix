@@ -335,6 +335,7 @@ class MainWindow(QMainWindow):
         self.latest_calc_instance = None
         self.latest_profile = None
         self.latest_de_mask = None
+        self.de_latest_profile = None
 
         # connect colormap changes
         self.map_dock.cmap_box.currentTextChanged.connect(self._update_map_colormap)
@@ -616,7 +617,7 @@ class MainWindow(QMainWindow):
         self.latest_de_mask = mask_smoothed
         # plot mask and profiles
         self._plot_mask()
-        self.latest_profile = (r_best, t_best)
+        self.de_latest_profile = (r_best, t_best)
         self._plot_profile()
         self.statusBar().showMessage("Optimization finished", 5000)
         self.run_btn.setEnabled(True)
@@ -677,17 +678,30 @@ class MainWindow(QMainWindow):
 
     def _plot_profile(self):
         """Plot radial profile in profile dock."""
-        if self.latest_profile is None:
-            return
-        r, tline = self.latest_profile
         fig = self.profile_dock.fig
         fig.clear()
         ax = fig.subplots()
-        ax.plot(r, tline, linewidth=2)
+    
+        # Plot map_worker data if available
+        if hasattr(self, 'latest_profile') and self.latest_profile is not None:
+            r_map, tline_map = self.latest_profile
+            ax.plot(r_map, tline_map, "b-", linewidth=2, label="Source Profile")
+    
+        # Plot de_worker data if available
+        if hasattr(self, 'de_latest_profile') and self.de_latest_profile is not None:
+            r_de, tline_de = self.de_latest_profile
+            ax.plot(r_de, tline_de, "r--", linewidth=2, label="Masked Profile")
+    
         ax.set_xlabel("Radius [cm]")
         ax.set_ylabel("Normalized thickness")
         ax.set_title("Radial Profile")
         ax.grid(True, linestyle="--", linewidth=0.5)
+    
+        # Add legend only if we have at least one line
+        if (hasattr(self, 'latest_profile') and self.latest_profile is not None) or \
+           (hasattr(self, 'de_latest_profile') and self.de_latest_profile is not None):
+            ax.legend()
+    
         self.profile_dock.canvas.draw_idle()
 
     def _plot_mask(self):
